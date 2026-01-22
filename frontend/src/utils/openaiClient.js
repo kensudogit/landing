@@ -1,117 +1,54 @@
-// OpenAI API クライアント（最適化されたプロキシサービス使用）
+// OpenAI API クライアント（バックエンドAPI経由）
 class OpenAIClient {
   constructor(apiKey) {
-    this.apiKey = apiKey;
-    // 信頼性の高いプロキシサービス（成功したものを優先）
-    this.proxyServices = [
-      {
-        name: 'corsproxy',
-        url: 'https://corsproxy.io/?',
-        method: 'POST',
-        priority: 1 // 最も信頼性が高い
-      },
-      {
-        name: 'proxy',
-        url: 'https://proxy.cors.sh/',
-        method: 'POST',
-        priority: 2
-      },
-      {
-        name: 'allorigins',
-        url: 'https://api.allorigins.win/raw?url=',
-        method: 'GET',
-        priority: 3
-      }
-    ];
-    this.baseURL = 'https://api.openai.com/v1';
+    this.apiKey = apiKey; // フロントエンドでは使用しないが、互換性のため保持
+    // バックエンドAPIのベースURL（相対パスを使用して同じドメインで動作）
+    const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+    this.apiBaseURL = API_BASE_URL;
   }
 
-  async generateContent(prompt, userInfo) {
-    // 優先度順にプロキシサービスを試行
-    const sortedServices = this.proxyServices.sort((a, b) => a.priority - b.priority);
-    
-    for (const service of sortedServices) {
-      try {
-        console.log(`プロキシサービス ${service.name} を試行中...`);
-        const result = await this.tryProxyService(service, prompt);
-        console.log(`プロキシサービス ${service.name} で成功`);
-        return result;
-      } catch (error) {
-        console.log(`プロキシサービス ${service.name} 失敗:`, error.message);
-        continue;
-      }
-    }
-    
-    throw new Error('すべてのプロキシサービスが失敗しました。ブラウザの拡張機能（CORS Unblock等）を使用するか、開発者モードでCORSを無効化してください。');
-  }
-
-  async tryProxyService(service, prompt) {
-    const requestBody = JSON.stringify({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: 'あなたは須藤技術士事務所のITコンサルタントです。ユーザーの情報を基に、パーソナライズされたITサービス提案資料を作成してください。'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      max_tokens: 2000,
-      temperature: 0.7
-    });
-
-    let response;
-    
-    if (service.name === 'allorigins') {
-      // alloriginsは特別な処理が必要
-      try {
-        response = await fetch(`${service.url}${encodeURIComponent(this.baseURL + '/chat/completions')}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: requestBody
-          }),
-          // Microsoft Edgeのサードパーティクッキー無効化に対応
-          credentials: 'omit' // クッキーを送信しない
-        });
-      } catch (error) {
-        throw new Error('allorigins service error');
-      }
-    } else {
-      // 他のプロキシサービス
-      response = await fetch(`${service.url}${this.baseURL}/chat/completions`, {
+  async generateContent(prompt, userInfo = {}) {
+    try {
+      console.log('バックエンドAPI経由でOpenAI APIを呼び出し中...');
+      
+      // 相対パスを使用（同じドメインで配信されているため）
+      const apiUrl = this.apiBaseURL ? `${this.apiBaseURL}/api/openai/generate` : '/api/openai/generate';
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
         },
-        body: requestBody,
+        body: JSON.stringify({
+          prompt: prompt,
+          userInfo: userInfo
+        }),
         // Microsoft Edgeのサードパーティクッキー無効化に対応
         credentials: 'omit' // クッキーを送信しない
       });
-    }
 
-    if (!response.ok) {
-      throw new Error(`Proxy API error: ${response.status} ${response.statusText}`);
-    }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`);
+      }
 
-    const data = await response.json();
-    
-    // レスポンスの検証
-    if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('Invalid response format from OpenAI API');
+      const data = await response.json();
+      
+      // レスポンスの検証
+      if (!data || !data.success) {
+        throw new Error(data.error || 'Invalid response format from API');
+      }
+      
+      if (!data.content) {
+        throw new Error('Content not found in API response');
+      }
+      
+      console.log('バックエンドAPI経由でOpenAI API呼び出し成功');
+      return data.content;
+    } catch (error) {
+      console.error('OpenAI API呼び出しエラー:', error);
+      throw new Error(`OpenAI API呼び出しに失敗しました: ${error.message}`);
     }
-    
-    return data.choices[0].message.content;
   }
 
   generatePrompt(userInfo) {
