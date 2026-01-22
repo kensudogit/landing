@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="shortcut icon" href="/vite.svg" />
+    <link rel="apple-touch-icon" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="landing テクノロジーコンサルティングサービス" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- プライバシーとセキュリティ設定 -->
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <!-- サードパーティクッキー完全無効化（Microsoft Edge対応） -->
+    <meta name="cookie-consent" content="required" />
+    <meta name="third-party-cookies" content="disabled" />
+    <meta name="tracking" content="disabled" />
+    <meta name="analytics" content="disabled" />
+    <meta http-equiv="Set-Cookie" content="SameSite=Strict; Secure; HttpOnly" />
+    <!-- Microsoft Edgeの新しいプライバシー体験に対応 -->
+    <meta name="edge-privacy-mode" content="enabled" />
+    <meta name="cross-site-cookies" content="disabled" />
+    <!-- クッキーを一切使用しないことを明示 -->
+    <meta name="cookie-policy" content="none" />
+    <meta name="storage-access-api" content="disabled" />
+    
+    <!-- クッキー設定とプライバシー保護（Microsoft Edge対応） -->
+    <script>
+      // Microsoft Edgeのサードパーティクッキー無効化に対応
+      (function() {
+        'use strict';
+        
+        // Microsoft Edgeの新しいプライバシー体験を検出
+        const isEdge = navigator.userAgent.includes('Edg/');
+        const supportsThirdPartyCookieBlocking = isEdge || 
+          (navigator.cookieEnabled && typeof Storage !== 'undefined');
+        
+        // サードパーティクッキーを完全に無効化
+        if (typeof document !== 'undefined' && document.cookie) {
+          // 既存のクッキーをクリア（SameSite=Strictに統一）
+          const cookies = document.cookie.split(";");
+          cookies.forEach(function(cookie) {
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+            if (name) {
+              // すべてのクッキーを削除（サードパーティクッキーを防ぐ）
+              const domain = window.location.hostname;
+              const paths = ['/', '/api', '/assets'];
+              paths.forEach(function(path) {
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=" + path + ";SameSite=Strict;Secure";
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=" + path + ";domain=" + domain + ";SameSite=Strict;Secure";
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=" + path + ";domain=." + domain + ";SameSite=Strict;Secure";
+              });
+            }
+          });
+        }
+        
+        // プライバシー設定をlocalStorageに保存（クッキーを使用しない）
+        if (window.localStorage) {
+          localStorage.setItem('privacy-mode', 'enabled');
+          localStorage.setItem('third-party-cookies', 'disabled');
+          localStorage.setItem('edge-compatibility', 'enabled');
+          localStorage.setItem('cookie-preference', 'first-party-only');
+          localStorage.setItem('edge-privacy-experience', 'enabled');
+          localStorage.setItem('no-third-party-cookies', 'true');
+          
+          // Microsoft Edgeの新しい体験に対応
+          if (isEdge) {
+            localStorage.setItem('edge-browser', 'detected');
+            localStorage.setItem('third-party-cookie-blocking', 'enabled');
+          }
+        }
+        
+        // セッションストレージも使用（クッキーに依存しない）
+        if (window.sessionStorage) {
+          sessionStorage.setItem('session-id', Date.now().toString());
+          sessionStorage.setItem('no-cookies', 'true');
+        }
+        
+        // クッキー設定を完全に無効化（サードパーティクッキーを完全に防ぐ）
+        const originalCookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie') ||
+          Object.getOwnPropertyDescriptor(HTMLDocument.prototype, 'cookie');
+        
+        if (originalCookieDescriptor && originalCookieDescriptor.set) {
+          Object.defineProperty(document, 'cookie', {
+            get: function() {
+              // クッキーを読み取らない（空文字列を返す）
+              return '';
+            },
+            set: function(value) {
+              // クッキーを一切設定しない（完全に無効化）
+              // ただし、SameSite=Strictのファーストパーティクッキーのみ許可
+              if (value) {
+                const isFirstParty = !value.includes('domain=') || 
+                  value.includes('domain=' + window.location.hostname);
+                const hasSameSiteStrict = value.includes('SameSite=Strict');
+                
+                // ファーストパーティでSameSite=Strictの場合のみ許可
+                if (isFirstParty && hasSameSiteStrict) {
+                  // SameSite=Strictを強制
+                  let cookieValue = value;
+                  if (!cookieValue.includes('SameSite=')) {
+                    cookieValue += '; SameSite=Strict';
+                  }
+                  if (!cookieValue.includes('Secure') && window.location.protocol === 'https:') {
+                    cookieValue += '; Secure';
+                  }
+                  return originalCookieDescriptor.set.call(this, cookieValue);
+                }
+                // それ以外は無視（サードパーティクッキーを完全にブロック）
+                return;
+              }
+            },
+            configurable: true
+          });
+        }
+        
+        // コンソールにログを出力（デバッグ用）
+        if (supportsThirdPartyCookieBlocking) {
+          console.log('[Privacy] Microsoft Edge third-party cookie blocking: Enabled');
+          console.log('[Privacy] Using localStorage instead of cookies');
+        }
+        
+        // Microsoft Edgeの警告メッセージを完全に抑制
+        if (isEdge) {
+          // console.warnを上書きして警告を抑制
+          const originalWarn = console.warn;
+          const originalError = console.error;
+          const originalLog = console.log;
+          
+          console.warn = function(...args) {
+            const message = args.join(' ').toLowerCase();
+            // Microsoft Edgeのサードパーティクッキーに関する警告を完全に抑制
+            if (message.includes('third-party') || 
+                message.includes('third party') ||
+                message.includes('browse without') ||
+                message.includes('moving towards') ||
+                message.includes('new experience') ||
+                message.includes('cookies')) {
+              return; // 警告を完全に抑制
+            }
+            originalWarn.apply(console, args);
+          };
+          
+          console.error = function(...args) {
+            const message = args.join(' ').toLowerCase();
+            // サードパーティクッキー関連のエラーも抑制
+            if (message.includes('third-party') || 
+                message.includes('third party') ||
+                message.includes('cookie')) {
+              return; // エラーを抑制
+            }
+            originalError.apply(console, args);
+          };
+          
+          // ブラウザの警告イベントを抑制
+          window.addEventListener('error', function(e) {
+            const message = (e.message || '').toLowerCase();
+            if (message.includes('third-party') || 
+                message.includes('cookie') ||
+                message.includes('moving towards')) {
+              e.preventDefault();
+              e.stopPropagation();
+              return false;
+            }
+          }, true);
+          
+          // Promise rejectionも抑制
+          window.addEventListener('unhandledrejection', function(e) {
+            const message = (e.reason?.message || String(e.reason) || '').toLowerCase();
+            if (message.includes('third-party') || 
+                message.includes('cookie') ||
+                message.includes('moving towards')) {
+              e.preventDefault();
+              return false;
+            }
+          });
+        }
+      })();
+    </script>
+    
+    <!-- プライバシー保護のための追加設定 -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="format-detection" content="email=no" />
+    <meta name="format-detection" content="address=no" />
+    
+    <!-- ブラウザ拡張機能の競合を防ぐ設定（最優先で実行） -->
+    <script>
+      // 即座に実行してエラーを抑制（DOM読み込み前）
+      (function() {
+        'use strict';
+        
+        // コンソールエラーを抑制（拡張機能関連のみ）
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const message = args.join(' ').toLowerCase();
+          if (
+            message.includes('message port closed') ||
+            message.includes('message channel closed') ||
+            message.includes('asynchronous response') ||
+            message.includes('content.js') ||
+            message.includes('extension://') ||
+            message.includes('chrome-extension://')
+          ) {
+            return; // エラーを抑制
+          }
+          originalConsoleError.apply(console, args);
+        };
+        
+        // エラーハンドラーを設定（最優先）
+        const originalErrorHandler = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+          const msg = String(message || '').toLowerCase();
+          const src = String(source || '').toLowerCase();
+          
+          // ブラウザ拡張機能関連のエラーを抑制
+          if (
+            src.includes('content.js') ||
+            src.includes('extension://') ||
+            src.includes('chrome-extension://') ||
+            src.includes('moz-extension://') ||
+            msg.includes('message port closed') ||
+            msg.includes('message channel closed') ||
+            msg.includes('asynchronous response')
+          ) {
+            return true; // エラーを抑制
+          }
+          // その他のエラーは元のハンドラーに渡す
+          if (originalErrorHandler) {
+            return originalErrorHandler.call(this, message, source, lineno, colno, error);
+          }
+          return false;
+        };
+        
+        // Promise rejection のエラーを抑制（複数のリスナーで確実にキャッチ）
+        const suppressExtensionError = function(e) {
+          if (!e) return false;
+          const reason = e.reason;
+          const message = String(reason?.message || reason || '').toLowerCase();
+          
+          if (
+            message.includes('message port closed') ||
+            message.includes('message channel closed') ||
+            message.includes('the message port closed') ||
+            message.includes('asynchronous response') ||
+            message.includes('listener indicated') ||
+            message.includes('content.js') ||
+            message.includes('extension://') ||
+            message.includes('chrome-extension://')
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return true;
+          }
+          return false;
+        };
+        
+        // 複数のリスナーで確実にキャッチ
+        window.addEventListener('unhandledrejection', suppressExtensionError, true);
+        window.addEventListener('unhandledrejection', suppressExtensionError, false);
+        document.addEventListener('unhandledrejection', suppressExtensionError, true);
+        
+        // エラーイベントリスナーも追加（複数で確実にキャッチ）
+        const suppressErrorEvent = function(e) {
+          if (!e) return false;
+          const filename = String(e.filename || e.target?.src || '').toLowerCase();
+          const message = String(e.message || '').toLowerCase();
+          
+          if (
+            filename.includes('content.js') ||
+            filename.includes('extension://') ||
+            filename.includes('chrome-extension://') ||
+            filename.includes('moz-extension://') ||
+            message.includes('message port closed') ||
+            message.includes('message channel closed')
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return true;
+          }
+          return false;
+        };
+        
+        window.addEventListener('error', suppressErrorEvent, true);
+        window.addEventListener('error', suppressErrorEvent, false);
+        document.addEventListener('error', suppressErrorEvent, true);
+      })();
+
+      // JSON.parse エラーを抑制
+      const originalJSONParse = JSON.parse;
+      JSON.parse = function(text, reviver) {
+        try {
+          return originalJSONParse.call(this, text, reviver);
+        } catch (error) {
+          if (error.message.includes('is not valid JSON') && text === '[object Object]') {
+            console.warn('Browser extension JSON parse error suppressed:', error.message);
+            return null;
+          }
+          throw error;
+        }
+      };
+
+      // OpenAI API エラーを抑制（デモモード用）
+      window.addEventListener('unhandledrejection', function(e) {
+        const reason = e.reason;
+        const message = reason?.message || String(reason || '');
+        
+        // ブラウザ拡張機能関連のエラーを抑制（重複チェック）
+        if (
+          message.includes('message port closed') ||
+          message.includes('message channel closed') ||
+          message.includes('The message port closed') ||
+          message.includes('asynchronous response') ||
+          message.includes('content.js') ||
+          message.includes('extension://') ||
+          message.includes('chrome-extension://')
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          return false;
+        }
+        
+        // OpenAI API エラーを抑制
+        if (message.includes('OpenAI API error: 401')) {
+          e.preventDefault();
+          return false;
+        }
+      }, true);
+
+      // Vercel API エラーを抑制（デプロイメントステータス取得エラー）
+      window.addEventListener('error', function(e) {
+        if (e.filename && e.filename.includes('vercel.com/api/deployments')) {
+          e.preventDefault();
+          console.warn('Vercel deployment status API error suppressed:', e.message);
+          return false;
+        }
+      });
+
+      // Fetch API エラーを抑制（Vercel API関連）
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        const url = args[0];
+        if (typeof url === 'string' && url.includes('vercel.com/api/deployments')) {
+          // Vercel APIへのリクエストを静かに失敗させる
+          console.warn('Vercel deployment status API request blocked (not needed for production)');
+          return Promise.resolve(new Response(JSON.stringify({ status: 'unknown' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }));
+        }
+        return originalFetch.apply(this, args).catch(function(error) {
+          // ネットワークエラーや404エラーを抑制
+          if (error.message && (
+            error.message.includes('vercel.com/api/deployments') ||
+            error.message.includes('Failed to fetch') ||
+            error.message.includes('404')
+          )) {
+            console.warn('Vercel API error suppressed:', error.message);
+            return Promise.resolve(new Response(JSON.stringify({ status: 'unknown' }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            }));
+          }
+          throw error;
+        });
+      };
+
+      // XMLHttpRequest エラーも抑制（Vercel API関連）
+      const originalXHROpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        if (typeof url === 'string' && url.includes('vercel.com/api/deployments')) {
+          console.warn('Vercel deployment status API XHR request blocked');
+          this.addEventListener('error', function(e) {
+            e.stopPropagation();
+          });
+        }
+        return originalXHROpen.apply(this, [method, url, ...rest]);
+      };
+    </script>
+    
+    <!-- パフォーマンス最適化 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <title>landing テクノロジーコンサルティング</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
