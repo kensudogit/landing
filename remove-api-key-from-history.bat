@@ -13,8 +13,9 @@ echo [1/3] 古いAPIキーを検索中...
 echo.
 
 REM 検出されたAPIキー（過去のコミットに含まれている可能性があるもの）
-set OLD_KEY1=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
-set OLD_KEY2=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
+REM 注意: APIキーは環境変数から取得するか、ユーザー入力で取得してください
+set OLD_KEY1=REMOVED_API_KEY_PLACEHOLDER
+set OLD_KEY2=REMOVED_API_KEY_PLACEHOLDER
 
 echo [2/3] Git履歴を書き換え中...
 echo これには時間がかかる場合があります...

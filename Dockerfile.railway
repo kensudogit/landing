@@ -3,7 +3,6 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app
 
-<<<<<<< HEAD
 # Railwayの環境変数をビルド時に受け取る（ARG）
 ARG VITE_OPENAI_API_KEY
 ARG VITE_API_URL
@@ -14,17 +13,11 @@ ENV VITE_OPENAI_API_KEY=${VITE_OPENAI_API_KEY}
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_ENVIRONMENT=${VITE_ENVIRONMENT}
 
-=======
->>>>>>> 80838cf3dd99dcef6973c851f6c1e6450281dc5a
 # フロントエンドの依存関係をインストール
 COPY frontend/package*.json ./
 RUN npm ci
 
-<<<<<<< HEAD
 # フロントエンドをビルド（環境変数がビルド時に埋め込まれる）
-=======
-# フロントエンドをビルド
->>>>>>> 80838cf3dd99dcef6973c851f6c1e6450281dc5a
 COPY frontend/ .
 RUN npm run build
 

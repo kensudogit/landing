@@ -35,10 +35,10 @@ Write-Host "[2/3] Git履歴を書き換え中..." -ForegroundColor Green
 Write-Host "これには時間がかかる場合があります..." -ForegroundColor Yellow
 Write-Host ""
 
-# 削除するAPIキー
+# 削除するAPIキー（正規表現パターンを使用）
+# 注意: 実際のAPIキーはハードコードせず、正規表現で検索・置換します
 $oldKeys = @(
-    "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",
-    "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"
+    "sk-proj-[A-Za-z0-9_-]+"  # OpenAI APIキーのパターン
 )
 
 # git filter-branchを使用して履歴を書き換え
