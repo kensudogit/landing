@@ -20,14 +20,29 @@ class OpenAIController extends Controller
 
             $prompt = $request->input('prompt');
             $userInfo = $request->input('userInfo', []); // デフォルト値を空配列に設定
-            // 環境変数からAPIキーを取得（セキュリティのため）
-            $apiKey = env('OPENAI_API_KEY');
+            
+            // 環境変数からAPIキーを取得（複数の方法を試す）
+            // Railwayでは環境変数が直接設定されるため、複数の方法で取得を試みる
+            $apiKey = getenv('OPENAI_API_KEY') 
+                ?: $_ENV['OPENAI_API_KEY'] 
+                ?? $_SERVER['OPENAI_API_KEY'] 
+                ?? env('OPENAI_API_KEY');
             
             // APIキーが設定されていない場合のエラーハンドリング
-            if (!$apiKey || $apiKey === 'your-openai-api-key-here') {
+            if (empty($apiKey) || $apiKey === 'your-openai-api-key-here') {
+                // デバッグ情報（本番環境では削除推奨）
+                $debugInfo = [
+                    'getenv' => getenv('OPENAI_API_KEY') ? 'set' : 'not set',
+                    '_ENV' => isset($_ENV['OPENAI_API_KEY']) ? 'set' : 'not set',
+                    '_SERVER' => isset($_SERVER['OPENAI_API_KEY']) ? 'set' : 'not set',
+                    'env()' => env('OPENAI_API_KEY') ? 'set' : 'not set',
+                ];
+                
+                \Log::warning('OpenAI API key not found', $debugInfo);
+                
                 return response()->json([
                     'success' => false,
-                    'error' => 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.'
+                    'error' => 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable in Railway dashboard.'
                 ], 500);
             }
 
