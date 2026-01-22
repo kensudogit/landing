@@ -59,6 +59,17 @@ RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/memory-limit.ini
 RUN echo "upload_max_filesize = 100M" > /usr/local/etc/php/conf.d/upload-max-filesize.ini
 RUN echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/upload-max-filesize.ini
 
+# PHP-FPM設定: ソケットを使用するように設定（ビルド時に修正）
+RUN if [ -f /usr/local/etc/php-fpm.d/www.conf ]; then \
+    sed -i "s|listen = .*|listen = /var/run/php-fpm.sock|g" /usr/local/etc/php-fpm.d/www.conf || true && \
+    sed -i "s|;listen.owner = .*|listen.owner = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true && \
+    sed -i "s|;listen.group = .*|listen.group = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true && \
+    sed -i "s|;listen.mode = .*|listen.mode = 0660|g" /usr/local/etc/php-fpm.d/www.conf || true && \
+    echo "listen.owner = www-data" >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo "listen.group = www-data" >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo "listen.mode = 0660" >> /usr/local/etc/php-fpm.d/www.conf || true; \
+    fi
+
 # バックエンドファイルをコピー
 COPY backend/ /var/www/html/
 
@@ -70,7 +81,14 @@ COPY nginx.railway.conf /etc/nginx/templates/default.conf.template
 
 # 起動スクリプトを作成
 RUN echo '#!/bin/bash' > /usr/local/bin/railway-entrypoint.sh && \
-    echo 'set -e' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# set -e を削除（エラーハンドリングを改善）' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# 最初に既存のPHP-FPMプロセスを確実に停止（php:8.2-fpmイメージのデフォルト起動を停止）' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'echo "Stopping any existing PHP-FPM processes..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'killall -9 php-fpm 2>/dev/null || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'pkill -9 php-fpm 2>/dev/null || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'ps aux | grep "[p]hp-fpm" | awk '"'"'{print $2}'"'"' | xargs -r kill -9 2>/dev/null || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'sleep 2' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# 依存関係をインストール' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'if [ ! -d "vendor" ] || [ -z "$(ls -A vendor)" ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
@@ -109,31 +127,48 @@ RUN echo '#!/bin/bash' > /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# PHP-FPM設定: ソケットディレクトリを作成' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'mkdir -p /var/run' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'chown www-data:www-data /var/run || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# 再度既存のPHP-FPMプロセスを停止（念のため）' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'killall -9 php-fpm 2>/dev/null || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'pkill -9 php-fpm 2>/dev/null || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'sleep 2' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# PHP-FPM設定ファイルを確認・修正（ソケットパスを設定）' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'if [ -f /usr/local/etc/php-fpm.d/www.conf ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    sed -i "s|listen = .*|listen = /var/run/php-fpm.sock|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    sed -i "s|listen.owner = .*|listen.owner = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    sed -i "s|listen.group = .*|listen.group = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    sed -i "s|listen.mode = .*|listen.mode = 0660|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sed -i "s|^listen = .*|listen = /var/run/php-fpm.sock|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sed -i "s|^;listen.owner = .*|listen.owner = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sed -i "s|^listen.owner = .*|listen.owner = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sed -i "s|^;listen.group = .*|listen.group = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sed -i "s|^listen.group = .*|listen.group = www-data|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sed -i "s|^;listen.mode = .*|listen.mode = 0660|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sed -i "s|^listen.mode = .*|listen.mode = 0660|g" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '# PHP-FPMを直接起動（バックグラウンドで実行）' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo 'echo "Starting PHP-FPM..."' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '/usr/local/sbin/php-fpm -D || php-fpm -D || echo "PHP-FPM started"' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo 'sleep 3' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# PHP-FPMを起動（バックグラウンドで実行）' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'echo "Starting PHP-FPM with socket configuration..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '/usr/local/sbin/php-fpm -D -y /usr/local/etc/php-fpm.d/www.conf || php-fpm -D -y /usr/local/etc/php-fpm.d/www.conf || echo "PHP-FPM start attempt completed"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'sleep 5' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# PHP-FPMのソケットが作成されているか確認' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo 'if [ ! -S /var/run/php-fpm.sock ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    echo "ERROR: PHP-FPM socket not found at /var/run/php-fpm.sock"' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    echo "Attempting to start PHP-FPM again..."' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    /usr/local/sbin/php-fpm -D' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    sleep 2' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'if [ -S /var/run/php-fpm.sock ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    echo "PHP-FPM socket created successfully"' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    chmod 666 /var/run/php-fpm.sock || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "SUCCESS: PHP-FPM socket created at /var/run/php-fpm.sock"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    ls -la /var/run/php-fpm.sock' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    chmod 666 /var/run/php-fpm.sock || chmod 660 /var/run/php-fpm.sock || true' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'else' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo '    echo "WARNING: PHP-FPM socket still not found"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "ERROR: PHP-FPM socket not found at /var/run/php-fpm.sock"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Checking PHP-FPM process..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    ps aux | grep php-fpm || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Checking PHP-FPM config..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    grep "^listen" /usr/local/etc/php-fpm.d/www.conf || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Attempting to start PHP-FPM again..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    /usr/local/sbin/php-fpm -D -y /usr/local/etc/php-fpm.d/www.conf' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sleep 3' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    if [ -S /var/run/php-fpm.sock ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '        echo "SUCCESS: PHP-FPM socket created after retry"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    else' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '        echo "WARNING: PHP-FPM socket still not found"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    fi' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# Nginxを起動（フォアグラウンドで実行）' >> /usr/local/bin/railway-entrypoint.sh && \
