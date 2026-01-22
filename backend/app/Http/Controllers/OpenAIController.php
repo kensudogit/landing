@@ -14,11 +14,17 @@ class OpenAIController extends Controller
         try {
             $request->validate([
                 'prompt' => 'required|string',
+<<<<<<< HEAD
                 'userInfo' => 'required|array'
+=======
+                'userInfo' => 'required|array',
+                'apiKey' => 'required|string'
+>>>>>>> 80838cf3dd99dcef6973c851f6c1e6450281dc5a
             ]);
 
             $prompt = $request->input('prompt');
             $userInfo = $request->input('userInfo');
+<<<<<<< HEAD
             // 環境変数からAPIキーを取得（セキュリティのため）
             $apiKey = env('OPENAI_API_KEY');
             
@@ -29,6 +35,9 @@ class OpenAIController extends Controller
                     'error' => 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.'
                 ], 500);
             }
+=======
+            $apiKey = $request->input('apiKey');
+>>>>>>> 80838cf3dd99dcef6973c851f6c1e6450281dc5a
 
             // OpenAI APIを呼び出し
             $client = new Client();
