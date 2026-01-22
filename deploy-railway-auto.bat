@@ -35,7 +35,16 @@ railway service
 
 echo.
 echo [5/5] Railwayにデプロイ中...
+echo 注意: タイムアウトが発生した場合は、deploy-railway-retry.bat を使用してください
 railway up --detach
+if %errorlevel% neq 0 (
+    echo.
+    echo デプロイが失敗しました。リトライ機能付きスクリプトを試してください:
+    echo deploy-railway-retry.bat
+    echo.
+    pause
+    exit /b 1
+)
 
 echo.
 echo ========================================

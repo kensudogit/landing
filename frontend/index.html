@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="shortcut icon" href="/vite.svg" />
+    <link rel="apple-touch-icon" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="landing テクノロジーコンサルティングサービス" />
     <meta name="robots" content="index, follow" />
@@ -184,25 +186,109 @@
     <meta name="format-detection" content="email=no" />
     <meta name="format-detection" content="address=no" />
     
-    <!-- ブラウザ拡張機能の競合を防ぐ設定 -->
+    <!-- ブラウザ拡張機能の競合を防ぐ設定（最優先で実行） -->
     <script>
-      // ブラウザ拡張機能のエラーを抑制
-      window.addEventListener('error', function(e) {
-        if (e.filename && e.filename.includes('content.js')) {
-          e.preventDefault();
-          console.warn('Browser extension error suppressed:', e.message);
+      // 即座に実行してエラーを抑制（DOM読み込み前）
+      (function() {
+        'use strict';
+        
+        // コンソールエラーを抑制（拡張機能関連のみ）
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const message = args.join(' ').toLowerCase();
+          if (
+            message.includes('message port closed') ||
+            message.includes('message channel closed') ||
+            message.includes('asynchronous response') ||
+            message.includes('content.js') ||
+            message.includes('extension://') ||
+            message.includes('chrome-extension://')
+          ) {
+            return; // エラーを抑制
+          }
+          originalConsoleError.apply(console, args);
+        };
+        
+        // エラーハンドラーを設定（最優先）
+        const originalErrorHandler = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+          const msg = String(message || '').toLowerCase();
+          const src = String(source || '').toLowerCase();
+          
+          // ブラウザ拡張機能関連のエラーを抑制
+          if (
+            src.includes('content.js') ||
+            src.includes('extension://') ||
+            src.includes('chrome-extension://') ||
+            src.includes('moz-extension://') ||
+            msg.includes('message port closed') ||
+            msg.includes('message channel closed') ||
+            msg.includes('asynchronous response')
+          ) {
+            return true; // エラーを抑制
+          }
+          // その他のエラーは元のハンドラーに渡す
+          if (originalErrorHandler) {
+            return originalErrorHandler.call(this, message, source, lineno, colno, error);
+          }
           return false;
-        }
-      });
-      
-      // Promise rejection のエラーも抑制
-      window.addEventListener('unhandledrejection', function(e) {
-        if (e.reason && e.reason.message && e.reason.message.includes('message port closed')) {
-          e.preventDefault();
-          console.warn('Browser extension promise rejection suppressed:', e.reason.message);
+        };
+        
+        // Promise rejection のエラーを抑制（複数のリスナーで確実にキャッチ）
+        const suppressExtensionError = function(e) {
+          if (!e) return false;
+          const reason = e.reason;
+          const message = String(reason?.message || reason || '').toLowerCase();
+          
+          if (
+            message.includes('message port closed') ||
+            message.includes('message channel closed') ||
+            message.includes('the message port closed') ||
+            message.includes('asynchronous response') ||
+            message.includes('listener indicated') ||
+            message.includes('content.js') ||
+            message.includes('extension://') ||
+            message.includes('chrome-extension://')
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return true;
+          }
           return false;
-        }
-      });
+        };
+        
+        // 複数のリスナーで確実にキャッチ
+        window.addEventListener('unhandledrejection', suppressExtensionError, true);
+        window.addEventListener('unhandledrejection', suppressExtensionError, false);
+        document.addEventListener('unhandledrejection', suppressExtensionError, true);
+        
+        // エラーイベントリスナーも追加（複数で確実にキャッチ）
+        const suppressErrorEvent = function(e) {
+          if (!e) return false;
+          const filename = String(e.filename || e.target?.src || '').toLowerCase();
+          const message = String(e.message || '').toLowerCase();
+          
+          if (
+            filename.includes('content.js') ||
+            filename.includes('extension://') ||
+            filename.includes('chrome-extension://') ||
+            filename.includes('moz-extension://') ||
+            message.includes('message port closed') ||
+            message.includes('message channel closed')
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return true;
+          }
+          return false;
+        };
+        
+        window.addEventListener('error', suppressErrorEvent, true);
+        window.addEventListener('error', suppressErrorEvent, false);
+        document.addEventListener('error', suppressErrorEvent, true);
+      })();
 
       // JSON.parse エラーを抑制
       const originalJSONParse = JSON.parse;
@@ -220,12 +306,31 @@
 
       // OpenAI API エラーを抑制（デモモード用）
       window.addEventListener('unhandledrejection', function(e) {
-        if (e.reason && e.reason.message && e.reason.message.includes('OpenAI API error: 401')) {
+        const reason = e.reason;
+        const message = reason?.message || String(reason || '');
+        
+        // ブラウザ拡張機能関連のエラーを抑制（重複チェック）
+        if (
+          message.includes('message port closed') ||
+          message.includes('message channel closed') ||
+          message.includes('The message port closed') ||
+          message.includes('asynchronous response') ||
+          message.includes('content.js') ||
+          message.includes('extension://') ||
+          message.includes('chrome-extension://')
+        ) {
           e.preventDefault();
-          console.warn('OpenAI API 401 error suppressed (demo mode):', e.reason.message);
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           return false;
         }
-      });
+        
+        // OpenAI API エラーを抑制
+        if (message.includes('OpenAI API error: 401')) {
+          e.preventDefault();
+          return false;
+        }
+      }, true);
 
       // Vercel API エラーを抑制（デプロイメントステータス取得エラー）
       window.addEventListener('error', function(e) {
