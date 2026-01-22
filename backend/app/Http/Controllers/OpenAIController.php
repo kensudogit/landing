@@ -30,7 +30,7 @@ class OpenAIController extends Controller
             
             // APIキーが設定されていない場合のエラーハンドリング
             if (empty($apiKey) || $apiKey === 'your-openai-api-key-here') {
-                // デバッグ情報（本番環境では削除推奨）
+                // デバッグ情報（ログファイルに書き込めない場合でもエラーを返す）
                 $debugInfo = [
                     'getenv' => getenv('OPENAI_API_KEY') ? 'set' : 'not set',
                     '_ENV' => isset($_ENV['OPENAI_API_KEY']) ? 'set' : 'not set',
@@ -38,11 +38,17 @@ class OpenAIController extends Controller
                     'env()' => env('OPENAI_API_KEY') ? 'set' : 'not set',
                 ];
                 
-                \Log::warning('OpenAI API key not found', $debugInfo);
+                // ログファイルに書き込めない場合でもエラーを返す
+                try {
+                    \Log::warning('OpenAI API key not found', $debugInfo);
+                } catch (\Exception $logError) {
+                    // ログファイルへの書き込みに失敗した場合は無視
+                }
                 
                 return response()->json([
                     'success' => false,
-                    'error' => 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable in Railway dashboard.'
+                    'error' => 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable in Railway dashboard and redeploy.',
+                    'debug' => $debugInfo
                 ], 500);
             }
 

@@ -99,11 +99,27 @@ RUN echo '#!/bin/bash' > /usr/local/bin/railway-entrypoint.sh && \
     echo '# 権限を設定' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'chown -R dev:www-data /var/www/html' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'chmod -R 775 storage bootstrap/cache' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# storage/logsディレクトリを作成して権限を設定' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'mkdir -p storage/logs' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'chown -R dev:www-data storage/logs' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'chmod -R 775 storage/logs' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# 環境設定ファイルを作成' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'if [ ! -f ".env" ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '    echo "Creating .env file..."' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '    cp .env.example .env 2>/dev/null || echo "APP_KEY=base64:$(openssl rand -base64 32)" > .env' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# Railwayの環境変数OPENAI_API_KEYを.envファイルに書き込む' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'if [ -n "$OPENAI_API_KEY" ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Setting OPENAI_API_KEY in .env file..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    if grep -q "^OPENAI_API_KEY=" .env 2>/dev/null; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '        sed -i "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=$OPENAI_API_KEY|g" .env' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    else' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '        echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    fi' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'else' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "WARNING: OPENAI_API_KEY environment variable is not set"' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# アプリケーションキーを生成' >> /usr/local/bin/railway-entrypoint.sh && \
