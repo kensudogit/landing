@@ -11,10 +11,11 @@ Failed to load resource: the server responded with a status of 502 ()
 
 ## 🔍 原因
 
-1. **PHP-FPMが起動していない**
+1. **PHP-FPMがTCPポート9000で起動している**（ソケットではなく）
 2. **PHP-FPMのソケットパスが正しくない**
-3. **ソケットの権限が正しくない**
-4. **Nginx設定が正しくない**
+3. **既存のPHP-FPMプロセスが設定変更前に起動している**
+4. **ソケットの権限が正しくない**
+5. **Nginx設定が正しくない**
 
 ## ✅ 修正内容
 
@@ -22,11 +23,20 @@ Failed to load resource: the server responded with a status of 502 ()
 
 `nginx.railway.conf`の`/api`ルート設定を簡素化しました。
 
-### 2. PHP-FPM起動確認の強化
+### 2. PHP-FPM設定の修正（ビルド時）
+
+`Dockerfile.railway`のビルド時にPHP-FPM設定ファイルを修正：
+- ソケットパス（`/var/run/php-fpm.sock`）を設定
+- ソケットの所有者とグループを`www-data`に設定
+- ソケットの権限を`0660`に設定
+
+### 3. PHP-FPM起動プロセスの改善
 
 `Dockerfile.railway`のエントリーポイントスクリプトを修正：
-- PHP-FPMの起動を確認
-- ソケットの作成を確認
+- 既存のPHP-FPMプロセスを停止
+- 設定ファイルを再確認・修正
+- PHP-FPMを明示的に設定ファイルを指定して起動
+- ソケットの作成を確認（詳細なログ出力）
 - ソケットの権限を設定
 
 ## 🚀 次のステップ
@@ -46,8 +56,10 @@ git push origin main
 
 Railwayダッシュボードの「Logs」タブで以下を確認：
 
-- ✅ "PHP-FPM socket created successfully" が表示される
+- ✅ "SUCCESS: PHP-FPM socket created at /var/run/php-fpm.sock" が表示される
+- ✅ "Starting PHP-FPM with socket configuration..." が表示される
 - ❌ "ERROR: PHP-FPM socket not found" が表示されない
+- ❌ "ERROR: unable to bind listening socket for address '9000'" が表示されない
 - ✅ Nginxが正常に起動している
 
 ### 3. 動作確認
@@ -79,13 +91,22 @@ Railwayダッシュボードの「Logs」タブで以下を確認：
 
 ### PHP-FPMが起動しない場合
 
-1. **エントリーポイントスクリプトを確認**:
-   - `Dockerfile.railway`のエントリーポイントスクリプトを確認
-   - PHP-FPMの起動コマンドが正しいか確認
+1. **ログを確認**:
+   - "ERROR: unable to bind listening socket for address '9000'" が表示される場合、既存のPHP-FPMプロセスが残っている可能性があります
+   - "ERROR: PHP-FPM socket not found" が表示される場合、設定ファイルが正しく読み込まれていない可能性があります
 
-2. **ソケットパスを確認**:
+2. **エントリーポイントスクリプトを確認**:
+   - `Dockerfile.railway`のエントリーポイントスクリプトを確認
+   - PHP-FPMの起動コマンドが正しいか確認（`-y /usr/local/etc/php-fpm.d/www.conf`が指定されているか）
+
+3. **設定ファイルを確認**:
+   - `/usr/local/etc/php-fpm.d/www.conf`の`listen`設定が`/var/run/php-fpm.sock`になっているか確認
+   - ビルド時に設定ファイルが正しく修正されているか確認
+
+4. **ソケットパスを確認**:
    - `/var/run/php-fpm.sock`が存在するか確認
    - 権限が正しいか確認（666または660）
+   - 所有者が`www-data`になっているか確認
 
 ## 📝 変更ファイル
 

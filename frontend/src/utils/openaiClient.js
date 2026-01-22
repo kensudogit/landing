@@ -11,6 +11,9 @@ class OpenAIClient {
     try {
       console.log('バックエンドAPI経由でOpenAI APIを呼び出し中...');
       
+      // userInfoがundefinedやnullの場合は空オブジェクトに変換
+      const safeUserInfo = userInfo || {};
+      
       // 相対パスを使用（同じドメインで配信されているため）
       const apiUrl = this.apiBaseURL ? `${this.apiBaseURL}/api/openai/generate` : '/api/openai/generate';
       
@@ -21,7 +24,7 @@ class OpenAIClient {
         },
         body: JSON.stringify({
           prompt: prompt,
-          userInfo: userInfo
+          userInfo: safeUserInfo
         }),
         // Microsoft Edgeのサードパーティクッキー無効化に対応
         credentials: 'omit' // クッキーを送信しない

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 
@@ -14,11 +15,11 @@ class OpenAIController extends Controller
         try {
             $request->validate([
                 'prompt' => 'required|string',
-                'userInfo' => 'required|array'
+                'userInfo' => 'nullable|array' // userInfoをオプショナルに変更
             ]);
 
             $prompt = $request->input('prompt');
-            $userInfo = $request->input('userInfo');
+            $userInfo = $request->input('userInfo', []); // デフォルト値を空配列に設定
             // 環境変数からAPIキーを取得（セキュリティのため）
             $apiKey = env('OPENAI_API_KEY');
             
@@ -61,6 +62,14 @@ class OpenAIController extends Controller
                 'content' => $data['choices'][0]['message']['content']
             ]);
 
+        } catch (ValidationException $e) {
+            // バリデーションエラーの場合
+            $errors = $e->errors();
+            $firstError = collect($errors)->flatten()->first();
+            return response()->json([
+                'success' => false,
+                'error' => 'Validation error: ' . ($firstError ?? 'Invalid input data')
+            ], 422);
         } catch (RequestException $e) {
             return response()->json([
                 'success' => false,
