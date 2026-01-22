@@ -16,7 +16,7 @@ cd ..
 
 echo.
 echo [2/4] Railwayサービスを選択してください...
-echo "mr-alignment" を選択してEnterキーを押してください
+echo "landing" を選択するか、新規サービスを作成してください
 railway service
 
 echo.

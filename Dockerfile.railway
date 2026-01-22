@@ -1,6 +1,20 @@
+# マルチステージビルド: フロントエンドビルド
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app
+
+# フロントエンドの依存関係をインストール
+COPY frontend/package*.json ./
+RUN npm ci
+
+# フロントエンドをビルド
+COPY frontend/ .
+RUN npm run build
+
+# バックエンドビルドステージ
 FROM php:8.2-fpm
 
-# 必要なパッケージをインストール
+# Nginxをインストール（フロントエンド配信用）
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -11,7 +25,10 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd zip
+    nginx \
+    gettext-base \
+    && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd zip \
+    && rm -rf /var/lib/apt/lists/*
 
 # Composerをインストール
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -35,15 +52,55 @@ RUN echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/upload-max-filesize
 # バックエンドファイルをコピー
 COPY backend/ /var/www/html/
 
-# 起動スクリプトをコピー（パスを修正）
-COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# フロントエンドのビルド成果物をコピー
+COPY --from=frontend-builder /app/dist /var/www/html/public/frontend
 
-# ポート8000を公開
+# Nginx設定ファイルをコピー
+COPY nginx.railway.conf /etc/nginx/templates/default.conf.template
+
+# 起動スクリプトを作成
+RUN echo '#!/bin/bash' > /usr/local/bin/railway-entrypoint.sh && \
+    echo 'set -e' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# 依存関係をインストール' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'if [ ! -d "vendor" ] || [ -z "$(ls -A vendor)" ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Installing Laravel dependencies..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    composer install --no-interaction --optimize-autoloader' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# 権限を設定' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'chown -R dev:www-data /var/www/html' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'chmod -R 775 storage bootstrap/cache' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# 環境設定ファイルを作成' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'if [ ! -f ".env" ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Creating .env file..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    cp .env.example .env 2>/dev/null || echo "APP_KEY=base64:$(openssl rand -base64 32)" > .env' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# アプリケーションキーを生成' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'if ! grep -q "APP_KEY=base64:" .env; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Generating application key..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    php artisan key:generate --no-interaction' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# データベースのマイグレーションを実行' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'echo "Running database migrations..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'php artisan migrate --force --no-interaction || echo "Migration completed or tables already exist"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# Nginx設定でPORT環境変数を置換' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'PORT=${PORT:-8000}' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'envsubst '"'"'$$PORT'"'"' < /etc/nginx/templates/default.conf.template > /etc/nginx/sites-available/default' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# PHP-FPMを起動' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'service php8.2-fpm start' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# Nginxを起動' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /usr/local/bin/railway-entrypoint.sh && \
+    chmod +x /usr/local/bin/railway-entrypoint.sh
+
+# ポートを公開（RailwayのPORT環境変数に対応）
 EXPOSE 8000
 
 # デフォルトコマンド
-# RailwayのPORT環境変数に対応
-ENV PORT=8000
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-
+ENTRYPOINT ["/usr/local/bin/railway-entrypoint.sh"]
