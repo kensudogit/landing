@@ -1,6 +1,8 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.railway"
+# ビルド時に環境変数を渡す（Viteのビルド時に必要）
+buildCommand = ""
 
 [deploy]
 startCommand = ""
