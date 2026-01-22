@@ -119,8 +119,22 @@ RUN echo '#!/bin/bash' > /usr/local/bin/railway-entrypoint.sh && \
     echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# PHP-FPMを直接起動（バックグラウンドで実行）' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'echo "Starting PHP-FPM..."' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '/usr/local/sbin/php-fpm -D || php-fpm -D || echo "PHP-FPM started"' >> /usr/local/bin/railway-entrypoint.sh && \
-    echo 'sleep 2' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'sleep 3' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '# PHP-FPMのソケットが作成されているか確認' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'if [ ! -S /var/run/php-fpm.sock ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "ERROR: PHP-FPM socket not found at /var/run/php-fpm.sock"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "Attempting to start PHP-FPM again..."' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    /usr/local/sbin/php-fpm -D' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    sleep 2' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'if [ -S /var/run/php-fpm.sock ]; then' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "PHP-FPM socket created successfully"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    chmod 666 /var/run/php-fpm.sock || true' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'else' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo '    echo "WARNING: PHP-FPM socket still not found"' >> /usr/local/bin/railway-entrypoint.sh && \
+    echo 'fi' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '' >> /usr/local/bin/railway-entrypoint.sh && \
     echo '# Nginxを起動（フォアグラウンドで実行）' >> /usr/local/bin/railway-entrypoint.sh && \
     echo 'exec nginx -g "daemon off;"' >> /usr/local/bin/railway-entrypoint.sh && \
